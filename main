@@ -1,0 +1,145 @@
+import pygame as pg
+from classeJV import *
+import random as rd
+import pickle
+
+
+#Initialisation
+
+#On charge le meilleur score
+with open("theBest", "rb") as f1:
+	best = pickle.load(f1)
+
+
+l = 1200
+h = 600
+
+
+screen = pg.display.set_mode((l,h), pg.FULLSCREEN)
+pg.font.init()
+
+
+temps = pg.time.Clock()
+fps = 30
+sec = 0
+
+
+bg = Objet("bg.png", 0, 0, 0)
+perso = Hero("ship.png", 0, h/2, 5, 25)
+PasBeau = Ennemi("skull.png", 600, 300, 5)
+zText = pg.font.Font(None, 36)
+
+vilain = [PasBeau]
+
+
+
+def newVilain(vilain, compteur, fps, duree):
+  if compteur/fps % duree==0:
+    vilain.append(Ennemi("skull.png", 1250, rd.randint(0, h-50), 2.5))
+
+
+def Affichage():
+	bg.toBlit(screen)
+	perso.toBlit(screen)
+	perso.Tir(tKey)
+	#perso.Tir(tTir)
+
+	screen.blit(tScore, (0, 0))
+	screen.blit(tVie, (0, 25))
+
+	for i in perso.nbTir:
+		i.toBlit(screen)
+
+	for i in perso.nbTirSpe:
+		i.toBlit(screen)
+
+	for v in vilain:
+		v.toBlit(screen)
+		for i in v.nbTir:
+			i.toBlit(screen)
+
+
+def Deplacement():
+
+	perso.Move(tKey,screen)
+
+	for i in perso.nbTir:
+		i.Move()
+		for v in vilain:
+			perso.nbTir = i.Course(perso.nbTir, v)
+
+	for i in perso.nbTirSpe:
+		i.MoveMissile(vilain)
+		for v in vilain:
+			perso.nbTirSpe = i.Course(perso.nbTirSpe, v)
+
+	for v in vilain:
+		v.Move(sec)
+#		v.way(sec)
+		for i in v.nbTir:
+			i.Move()
+			v.nbTir = i.Course(v.nbTir, perso)
+
+
+def GererLesPasBeau():
+
+	newVilain(vilain, sec, fps, 2)
+
+	for v in vilain:
+		if rd.choice([False, False, True]):
+			v.Tir()
+		v.Die(vilain, perso)
+
+def GererScore(s, b):
+	#Stock le meilleur score dans un fichier
+
+	if s>b:
+		with open("theBest", "wb") as f1:
+			pickle.dump(s, f1)
+
+	with open("theBest", "rb") as f1:
+		b=pickle.load(f1)
+
+
+
+while perso.vivant:
+	
+	tKey = pg.key.get_pressed()
+
+	#Touche non maintenable
+	#tTir = pg.event.key()
+
+	temps.tick(fps)
+	sec += 1
+	tScore = zText.render("Ton score: " + str(perso.score) + "   Best: " + str(best), 1, (255, 255, 255))
+	tVie = zText.render("Vie: " + str(perso.life), 1, (255, 255, 255))
+
+
+	# Deplacement
+
+	Deplacement()
+
+
+	# Gérer apparition et disparition des ennemis
+
+	GererLesPasBeau()
+
+
+	# affichages
+
+	Affichage()
+
+	for v in vilain:
+		perso.Die(v)
+
+
+	pg.display.flip()
+
+	for event in pg.event.get():
+		if tKey[pg.K_ESCAPE]:
+			perso.vivant = False
+
+
+GererScore(perso.score, best)
+
+pg.quit()
