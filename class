@@ -1,0 +1,162 @@
+import pygame as pg
+import math
+import random as rd
+
+class Objet():
+
+	def __init__(self, Picture, x, y, v):
+		self.picture = pg.image.load(Picture)
+		self.rect = self.picture.get_rect()
+		self.rect.x = x
+		self.rect.y = y
+		self.vitesse = v
+
+	def toBlit(self, screen):
+		screen.blit(self.picture, self.rect)
+
+	def Collision(self,autre):
+		if self.rect.colliderect(autre.rect):
+			return True
+		return False
+
+
+
+class Hero(Objet):
+
+	def __init__(self, Picture, x, y, vh, hp):
+		Objet.__init__(self, Picture, x, y, vh)
+		self.life = hp
+		self.vivant = True
+		self.nbTir = []
+		self.nbTirSpe = []
+		self.score = 0
+
+	def Move(self, tKey, fenetre):
+		l,h = fenetre.get_size()
+
+		if tKey[pg.K_UP]:
+			self.rect.y -= self.vitesse
+			if self.rect.top < 0:
+				self.rect.top = 0
+		if tKey[pg.K_DOWN]:
+			self.rect.y += self.vitesse
+			if self.rect.bottom > h:
+				self.rect.bottom = h
+
+	def Tir(self, tKey):
+		if len(self.nbTir) <= 15:
+			if tKey[pg.K_SPACE]:
+				self.nbTir.append(Projectile("tir_gentil.png", (self.rect.x + 50), (self.rect.y + 13), 5, self, 1))
+#			for event in pg.event.get():
+#				if event.type == pg.K_SPACE :
+#					self.nbTir.append(Projectile("tir_gentil.png", (self.rect.x + 50), (self.rect.y + 13), 5, self, 1))
+		if len(self.nbTirSpe) <= 5:	
+			if tKey[pg.K_m]:
+				self.nbTirSpe.append(Missile("Missile.png", (self.rect.x + 50), (self.rect.y + 13), 5, self, 2))
+
+	def Die(self, v):
+		if self.life <= 0:
+			self.vivant = False
+
+		if self.Collision(v):
+			self.vivant = False
+
+class Ennemi(Objet):
+
+	def __init__(self, Picture, x, y, ve):
+		Objet.__init__(self, Picture, x, y, ve)
+#		Mouvement = [Move, Move2]
+		self.life = 5
+		self.point = 100
+		self.L_R = -10
+		self.nbTir = []
+		self.posY = self.rect.y
+#		self.way = rd.choice(Mouvement)
+
+
+	def Move(self, deg):
+
+		#Se déplace sur une courbe Sinus ou Cosinus
+		#math.cos(x) ou math.sin(x)
+
+		self.rect.y = math.sin(deg/5)*50 + self.posY 
+		
+		self.rect.x -= self.vitesse
+
+
+	def Move2(self, deg):
+
+		self.rect.y += self.L_R
+
+		if self.rect.y > 550 or self.rect.y < 50:
+			self.L_R = -self.L_R
+
+		self.rect.x -= self.vitesse
+
+
+	def Die(self, vilain, hero):
+		if self.life == 0 :
+			hero.score += self.point 
+			vilain.remove(self)
+
+		if self.rect.x == -50:
+			vilain.remove(self)
+
+
+	def Tir(self):
+		if len(self.nbTir) <= 1:
+			self.nbTir.append(Projectile("tir_ennemi.png", self.rect.x, self.rect.y, -5, self, 1))
+
+
+
+class Bonus(Objet):
+
+	def __init__(self ,Picture, x, y, vb):
+		Objet.__init__(self, Picture, x, y, vb)
+	
+
+
+class Projectile(Objet):
+
+	def __init__(self, Picture, x, y, vp, owner, power):
+		Objet.__init__(self, Picture, x, y, vp)
+		self.owner = owner
+		self.degat = power
+
+	def Move(self):
+		self.rect.x += self.vitesse
+
+	def Course(self, Liste, v):
+
+		if self.Collision(v):
+			if self in Liste:
+				Liste.remove(self)
+				v.life -= self.degat
+
+		if self.rect.x == 1200 or self.rect.x == -50:
+			if self in Liste:
+				Liste.remove(self)
+
+		return Liste		
+
+i = 0
+
+class Missile(Projectile):
+
+	def __init__(self, Picture, x, y, vp, owner, power):
+		Projectile.__init__(self, Picture, x, y, vp, owner, power)
+		
+	def MoveMissile(self, v):
+
+		if self.rect.x < v[i].rect.x:
+			if self.rect.y < v[i].rect.y:
+				self.rect.y += 2
+
+			if self.rect.y > v[i].rect.y:
+				self.rect.y -= 2
+
+		else:
+			i += 1
+
+		if i > len(v):
+			i = 0
